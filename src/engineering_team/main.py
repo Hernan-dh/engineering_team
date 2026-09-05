@@ -13,10 +13,16 @@ from engineering_team.program_options import ProgramSelection, choose_requiremen
 from engineering_team.resume import (
     STAGE_NAMES,
     ask_to_resume,
+    clear_failed_stage,
     first_incomplete_stage,
     has_previous_program,
     load_requirements,
+    mark_failed_stage,
     save_requirements,
+)
+from engineering_team.validation import (
+    GeneratedProgramValidationError,
+    validate_generated_program,
 )
 from .tools.sandbox_tools import reset_sandbox
 
@@ -67,10 +73,16 @@ def run():
     while True:
         try:
             active_crew.kickoff(inputs={'requirements': requirements})
+            print("\nRunning deterministic acceptance checks...")
+            validate_generated_program()
+            clear_failed_stage()
+            print("Generated program validated successfully.")
             return
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception as error:
+            if isinstance(error, GeneratedProgramValidationError):
+                mark_failed_stage(error.stage_index)
             print(f"\nError: {error}", file=sys.stderr)
             if not ask_to_resume():
                 raise Exception(f"An error occurred while running the crew: {error}") from error

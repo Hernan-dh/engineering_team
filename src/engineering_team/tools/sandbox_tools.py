@@ -1,6 +1,7 @@
 from pathlib import Path
 import shutil
 import subprocess
+from dataclasses import dataclass
 
 from crewai.tools import tool
 
@@ -11,6 +12,13 @@ DOCKERFILE = PROJECT_DIR / "docker" / "sandbox.Dockerfile"
 DOCKER_IMAGE = "engineering-team-sandbox:local"
 EXECUTION_TIMEOUT_SECONDS = 300
 SANDBOX_DIR.mkdir(parents=True, exist_ok=True)
+
+
+@dataclass(frozen=True)
+class SandboxExecution:
+    returncode: int
+    stdout: str
+    stderr: str
 
 
 def _sandbox_path(filename: str) -> Path:
@@ -47,6 +55,45 @@ def reset_sandbox() -> None:
     if SANDBOX_DIR.exists():
         shutil.rmtree(SANDBOX_DIR)
     SANDBOX_DIR.mkdir(parents=True)
+
+
+def execute_sandbox_python(arguments: list[str]) -> SandboxExecution:
+    """Execute Python arguments in the same constrained runtime used by tools."""
+    command = [
+        "docker", "run", "--rm",
+        "--network", "none",
+        "--memory", "1g",
+        "--cpus", "1",
+        "--pids-limit", "128",
+        "--cap-drop", "ALL",
+        "--security-opt", "no-new-privileges",
+        "--read-only",
+        "--tmpfs", "/tmp:rw,noexec,nosuid,size=128m",
+        "--volume", f"{SANDBOX_DIR}:/workspace:rw",
+        "--workdir", "/workspace",
+        DOCKER_IMAGE,
+        "python", *arguments,
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=EXECUTION_TIMEOUT_SECONDS,
+        )
+        return SandboxExecution(result.returncode, result.stdout, result.stderr)
+    except FileNotFoundError:
+        return SandboxExecution(127, "", "Docker is not installed or is not available on PATH.")
+    except subprocess.TimeoutExpired as error:
+        stdout = error.stdout.decode() if isinstance(error.stdout, bytes) else (error.stdout or "")
+        stderr = error.stderr.decode() if isinstance(error.stderr, bytes) else (error.stderr or "")
+        return SandboxExecution(
+            124,
+            stdout,
+            f"Execution stopped after {EXECUTION_TIMEOUT_SECONDS} seconds.\n{stderr}",
+        )
 
 
 @tool("List Sandbox Files")
@@ -97,40 +144,7 @@ def run_sandbox_python(filename: str) -> str:
         return f"No such Python file in the sandbox: {filename}"
 
     relative_filename = path.relative_to(SANDBOX_DIR).as_posix()
-    command = [
-        "docker", "run", "--rm",
-        "--network", "none",
-        "--memory", "1g",
-        "--cpus", "1",
-        "--pids-limit", "128",
-        "--cap-drop", "ALL",
-        "--security-opt", "no-new-privileges",
-        "--read-only",
-        "--tmpfs", "/tmp:rw,noexec,nosuid,size=128m",
-        "--volume", f"{SANDBOX_DIR}:/workspace:rw",
-        "--workdir", "/workspace",
-        DOCKER_IMAGE,
-        "python", relative_filename,
-    ]
-    try:
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=EXECUTION_TIMEOUT_SECONDS,
-        )
-    except FileNotFoundError:
-        return "Docker is not installed or is not available on PATH."
-    except subprocess.TimeoutExpired as error:
-        stdout = error.stdout.decode() if isinstance(error.stdout, bytes) else (error.stdout or "")
-        stderr = error.stderr.decode() if isinstance(error.stderr, bytes) else (error.stderr or "")
-        return (
-            f"Execution stopped after {EXECUTION_TIMEOUT_SECONDS} seconds.\n\n"
-            f"--- stdout so far ---\n{stdout or '(empty)'}\n\n"
-            f"--- stderr so far ---\n{stderr or '(empty)'}"
-        )
+    result = execute_sandbox_python([relative_filename])
     return (
         f"Exit code: {result.returncode}\n\n"
         f"--- stdout ---\n{result.stdout or '(empty)'}\n\n"

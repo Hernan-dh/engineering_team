@@ -12,8 +12,14 @@ from engineering_team.resume import (
     first_incomplete_stage,
     load_requirements,
     save_requirements,
+    mark_failed_stage,
 )
-from engineering_team.tools.sandbox_tools import run_sandbox_python, write_sandbox_file
+from engineering_team.tools.sandbox_tools import (
+    SandboxExecution,
+    run_sandbox_python,
+    write_sandbox_file,
+)
+from engineering_team.validation import GeneratedProgramValidationError, validate_generated_program
 
 
 class ModelProviderTests(unittest.TestCase):
@@ -117,6 +123,33 @@ class ResumeTests(unittest.TestCase):
             save_requirements("Build a scheduler", sandbox)
             self.assertEqual(load_requirements(sandbox), "Build a scheduler")
 
+    def test_failed_validation_forces_resume_stage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sandbox = Path(directory)
+            save_requirements("Build something", sandbox)
+            (sandbox / "design.md").write_text("done", encoding="utf-8")
+            (sandbox / "backend_summary.md").write_text("done", encoding="utf-8")
+            (sandbox / "frontend").mkdir()
+            (sandbox / "frontend" / "app.py").write_text("", encoding="utf-8")
+            (sandbox / "_validate.py").write_text("", encoding="utf-8")
+            (sandbox / "frontend_summary.md").write_text("done", encoding="utf-8")
+            (sandbox / "test_summary.md").write_text("done", encoding="utf-8")
+            mark_failed_stage(2, sandbox)
+            self.assertEqual(first_incomplete_stage(sandbox), 2)
+
+    def test_legacy_sandbox_keeps_completed_backend_when_marked_failed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sandbox = Path(directory)
+            (sandbox / "design.md").write_text("done", encoding="utf-8")
+            (sandbox / "backend").mkdir()
+            (sandbox / "backend" / "api.py").write_text("", encoding="utf-8")
+            (sandbox / "frontend").mkdir()
+            (sandbox / "frontend" / "app.py").write_text("", encoding="utf-8")
+            (sandbox / "_validate.py").write_text("", encoding="utf-8")
+            (sandbox / "test_summary.md").write_text("untrusted", encoding="utf-8")
+            mark_failed_stage(2, sandbox)
+            self.assertEqual(first_incomplete_stage(sandbox), 2)
+
     def test_offers_immediate_resume_after_error(self):
         answers = iter(["maybe", "y"])
         messages = []
@@ -126,6 +159,32 @@ class ResumeTests(unittest.TestCase):
 
     def test_declining_resume_returns_false(self):
         self.assertFalse(ask_to_resume(lambda _prompt: "n", lambda _text: None))
+
+
+class AcceptanceValidationTests(unittest.TestCase):
+    def test_rejects_frontend_failure_before_tests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sandbox = Path(directory)
+            (sandbox / "_validate.py").write_text("", encoding="utf-8")
+            (sandbox / "test_backend.py").write_text("", encoding="utf-8")
+            with self.assertRaises(GeneratedProgramValidationError) as raised:
+                validate_generated_program(
+                    sandbox,
+                    lambda _args: SandboxExecution(1, "", "bad theme"),
+                )
+            self.assertEqual(raised.exception.stage_index, 2)
+
+    def test_writes_trusted_summary_only_after_both_checks_pass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sandbox = Path(directory)
+            (sandbox / "_validate.py").write_text("", encoding="utf-8")
+            (sandbox / "test_backend.py").write_text("", encoding="utf-8")
+            validate_generated_program(
+                sandbox,
+                lambda _args: SandboxExecution(0, "ok", ""),
+            )
+            summary = (sandbox / "test_summary.md").read_text(encoding="utf-8")
+            self.assertIn("Backend unittest suite: passed", summary)
 
 
 if __name__ == "__main__":

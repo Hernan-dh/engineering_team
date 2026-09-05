@@ -21,6 +21,22 @@ def save_requirements(requirements: str, sandbox: Path = SANDBOX_DIR) -> None:
     (sandbox / STATE_FILE).write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
 
 
+def mark_failed_stage(stage_index: int, sandbox: Path = SANDBOX_DIR) -> None:
+    state_path = sandbox / STATE_FILE
+    state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.is_file() else {}
+    state["resume_stage"] = stage_index
+    state_path.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+
+
+def clear_failed_stage(sandbox: Path = SANDBOX_DIR) -> None:
+    state_path = sandbox / STATE_FILE
+    if not state_path.is_file():
+        return
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    state.pop("resume_stage", None)
+    state_path.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+
+
 def load_requirements(sandbox: Path = SANDBOX_DIR) -> str:
     state_path = sandbox / STATE_FILE
     if state_path.is_file():
@@ -40,23 +56,33 @@ def load_requirements(sandbox: Path = SANDBOX_DIR) -> str:
 
 def first_incomplete_stage(sandbox: Path = SANDBOX_DIR) -> int:
     """Return the zero-based task index that should run next."""
+    forced_stage = len(STAGE_NAMES)
+    state: dict[str, object] = {}
+    state_path = sandbox / STATE_FILE
+    if state_path.is_file():
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        saved_stage = state.get("resume_stage")
+        if isinstance(saved_stage, int) and 0 <= saved_stage < len(STAGE_NAMES):
+            forced_stage = saved_stage
     if not (sandbox / "design.md").is_file():
-        return 0
-    managed_run = (sandbox / STATE_FILE).is_file()
+        return min(0, forced_stage)
+    managed_run = isinstance(state.get("requirements"), str) and bool(
+        str(state["requirements"]).strip()
+    )
     backend_files = list((sandbox / "backend").glob("*.py"))
     backend_complete = (sandbox / "backend_summary.md").is_file() or (
         not managed_run and bool(backend_files)
     )
     if not backend_complete:
-        return 1
+        return min(1, forced_stage)
     if not (sandbox / "frontend" / "app.py").is_file() or not (
         (sandbox / "_validate.py").is_file()
         or (sandbox / "frontend_summary.md").is_file()
     ):
-        return 2
+        return min(2, forced_stage)
     if not (sandbox / "test_summary.md").is_file():
-        return 3
-    return len(STAGE_NAMES)
+        return min(3, forced_stage)
+    return forced_stage
 
 
 def ask_to_resume(

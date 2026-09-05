@@ -12,6 +12,8 @@ The command displays five program presets. Select `0` to enter custom requiremen
 
 The first run builds `engineering-team-sandbox:local`, which contains Python 3.13 and Gradio 6. Subsequent runs reuse that image and start with a clean `sandbox/`. Generated programs run without network access and are limited to one CPU, 1 GB RAM, 128 processes, and five minutes.
 
+After CrewAI completes, the entry point independently runs `_validate.py` and unittest discovery inside the sandbox image. Any non-zero result records the frontend or test stage as incomplete and enters the normal resume prompt. `test_summary.md` is replaced with a trusted pass summary only after both commands succeed.
+
 Runtime model order is defined in `src/engineering_team/model_config.py`. A provider failure advances to the next configured model for the current call. Tracing is disabled so generated code and requirements are not uploaded as CrewAI execution traces.
 Anonymous CrewAI telemetry and OpenTelemetry export are also disabled by the entry point. The pinned Gradio runtime keeps API documentation off the execution path, so a documentation-service outage cannot stop the crew.
 
