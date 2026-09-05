@@ -37,6 +37,8 @@ uv run crewai run
 
 This command initializes the engineering team and builds its isolated Python 3.13/Gradio 6 Docker image on first use. The lead designs the solution, backend and frontend engineers implement it, and the test engineer validates and repairs the backend in the shared sandbox workspace.
 
+At startup, the CLI offers five example programs plus option `0` for custom requirements. For non-interactive execution, set `ENGINEERING_REQUIREMENTS` to bypass the menu.
+
 Docker Desktop must be running. Generated files remain under `sandbox/` and are not committed.
 
 ## Understanding Your Crew

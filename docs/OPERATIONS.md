@@ -8,6 +8,8 @@
 4. Copy `.env.example` to `.env` and configure at least one of `GEMINI_API_KEY`, `GROQ_API_KEY`, or `OPENROUTER_API_KEY`.
 5. Run `uv run crewai run`.
 
+The command displays five program presets. Select `0` to enter custom requirements. Automated or hosted callers can set `ENGINEERING_REQUIREMENTS` and the menu will be skipped.
+
 The first run builds `engineering-team-sandbox:local`, which contains Python 3.13 and Gradio 6. Subsequent runs reuse that image and start with a clean `sandbox/`. Generated programs run without network access and are limited to one CPU, 1 GB RAM, 128 processes, and five minutes.
 
 Runtime model order is defined in `src/engineering_team/model_config.py`. A provider failure advances to the next configured model for the current call. Tracing is disabled so generated code and requirements are not uploaded as CrewAI execution traces.

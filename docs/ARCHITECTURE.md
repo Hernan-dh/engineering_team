@@ -10,6 +10,7 @@
 - `src/engineering_team/config/tasks.yaml`: task descriptions and expected outputs.
 - `src/engineering_team/crew.py`: CrewAI agent, task, and crew construction.
 - `src/engineering_team/main.py`: command-line entry points and kickoff inputs.
+- `src/engineering_team/program_options.py`: five curated program choices and custom-input selection.
 - `src/engineering_team/model_config.py`: version-controlled provider and model fallback order.
 - `src/engineering_team/model_provider.py`: per-call Gemini, Groq, and OpenRouter failover shared by all agents.
 - `src/engineering_team/tools/sandbox_tools.py`: constrained workspace tools and Docker execution.

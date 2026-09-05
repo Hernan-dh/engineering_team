@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from engineering_team.model_config import MODEL_FALLBACKS
 from engineering_team.model_provider import fallback_llm, is_empty_response, openai_compatible_messages
+from engineering_team.program_options import PROGRAM_OPTIONS, choose_requirements
 from engineering_team.tools.sandbox_tools import run_sandbox_python, write_sandbox_file
 
 
@@ -63,6 +64,21 @@ class SandboxToolTests(unittest.TestCase):
         self.assertIn("no-new-privileges", command)
         self.assertIn("--read-only", command)
         self.assertIn("Exit code: 0", result)
+
+
+class ProgramSelectionTests(unittest.TestCase):
+    def test_exposes_five_presets(self):
+        self.assertEqual(len(PROGRAM_OPTIONS), 5)
+
+    def test_selects_a_preset(self):
+        answers = iter(["3"])
+        selected = choose_requirements(lambda _prompt: next(answers), lambda _text: None)
+        self.assertEqual(selected, PROGRAM_OPTIONS[2][1])
+
+    def test_option_zero_accepts_custom_requirements(self):
+        answers = iter(["0", "Crear un editor de recetas"])
+        selected = choose_requirements(lambda _prompt: next(answers), lambda _text: None)
+        self.assertEqual(selected, "Crear un editor de recetas")
 
 
 if __name__ == "__main__":
