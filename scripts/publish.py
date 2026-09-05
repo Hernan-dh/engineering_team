@@ -235,7 +235,15 @@ def generate_proposal(paths: list[str]) -> tuple[str, str]:
 
 
 def verify() -> None:
-    if subprocess.run([sys.executable, str(ROOT / "scripts" / "verify.py")], cwd=ROOT).returncode:
+    command = ["uv", "run", "python", str(ROOT / "scripts" / "verify.py")]
+    try:
+        result = subprocess.run(command, cwd=ROOT)
+    except FileNotFoundError as error:
+        raise SystemExit(
+            "Publishing requires uv so verification uses the project's locked environment. "
+            "Install uv and run `uv sync` first."
+        ) from error
+    if result.returncode:
         raise SystemExit("Publishing cancelled: verification failed.")
 
 

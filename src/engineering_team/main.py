@@ -1,13 +1,21 @@
 #!/usr/bin/env python
+import os
 import sys
 import warnings
 from datetime import datetime
 
-import engineering_team.patch  # noqa: F401 — applies CrewAI MCP monkey-patch on import
+os.environ.setdefault("CREWAI_DISABLE_TELEMETRY", "true")
+os.environ.setdefault("OTEL_SDK_DISABLED", "true")
+
 from engineering_team.crew import EngineeringTeam
+from engineering_team.model_provider import fallback_llm
 from .tools.sandbox_tools import reset_sandbox
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 # This main file is intended to be a way for you to run your
 # crew locally, so refrain from adding unnecessary logic into this file.
@@ -38,7 +46,7 @@ def run():
 
     try:
         reset_sandbox()
-        EngineeringTeam().crew().kickoff(inputs=inputs)
+        EngineeringTeam(llm=fallback_llm()).crew().kickoff(inputs=inputs)
     except Exception as e:
         raise Exception(f"An error occurred while running the crew: {e}")
 
@@ -52,7 +60,7 @@ def train():
         'current_year': str(datetime.now().year)
     }
     try:
-        EngineeringTeam().crew().train(n_iterations=int(sys.argv[1]), filename=sys.argv[2], inputs=inputs)
+        EngineeringTeam(llm=fallback_llm()).crew().train(n_iterations=int(sys.argv[1]), filename=sys.argv[2], inputs=inputs)
 
     except Exception as e:
         raise Exception(f"An error occurred while training the crew: {e}")
@@ -62,7 +70,7 @@ def replay():
     Replay the crew execution from a specific task.
     """
     try:
-        EngineeringTeam().crew().replay(task_id=sys.argv[1])
+        EngineeringTeam(llm=fallback_llm()).crew().replay(task_id=sys.argv[1])
 
     except Exception as e:
         raise Exception(f"An error occurred while replaying the crew: {e}")
@@ -77,7 +85,7 @@ def test():
     }
 
     try:
-        EngineeringTeam().crew().test(n_iterations=int(sys.argv[1]), eval_llm=sys.argv[2], inputs=inputs)
+        EngineeringTeam(llm=fallback_llm()).crew().test(n_iterations=int(sys.argv[1]), eval_llm=sys.argv[2], inputs=inputs)
 
     except Exception as e:
         raise Exception(f"An error occurred while testing the crew: {e}")
@@ -103,7 +111,7 @@ def run_with_trigger():
     }
 
     try:
-        result = EngineeringTeam().crew().kickoff(inputs=inputs)
+        result = EngineeringTeam(llm=fallback_llm()).crew().kickoff(inputs=inputs)
         return result
     except Exception as e:
         raise Exception(f"An error occurred while running the crew with trigger: {e}")

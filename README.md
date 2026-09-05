@@ -20,7 +20,7 @@ crewai install
 ```
 ### Customizing
 
-**Add your `OPENAI_API_KEY` into the `.env` file**
+Configure one or more of `GEMINI_API_KEY`, `GROQ_API_KEY`, and `OPENROUTER_API_KEY` in `.env`. The crew uses the same per-call provider fallback pattern as the sibling CrewAI projects.
 
 - Modify `src/engineering_team/config/agents.yaml` to define your agents
 - Modify `src/engineering_team/config/tasks.yaml` to define your tasks
@@ -32,12 +32,12 @@ crewai install
 To kickstart your crew of AI agents and begin task execution, run this from the root folder of your project:
 
 ```bash
-$ crewai run
+uv run crewai run
 ```
 
-This command initializes the engineering_team Crew, assembling the agents and assigning them tasks as defined in your configuration.
+This command initializes the engineering team and builds its isolated Python 3.13/Gradio 6 Docker image on first use. The lead designs the solution, backend and frontend engineers implement it, and the test engineer validates and repairs the backend in the shared sandbox workspace.
 
-This example, unmodified, will run the create a `report.md` file with the output of a research on LLMs in the root folder.
+Docker Desktop must be running. Generated files remain under `sandbox/` and are not committed.
 
 ## Understanding Your Crew
 

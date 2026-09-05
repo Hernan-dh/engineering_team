@@ -8,8 +8,7 @@ design_task:
     The backend_engineer should write the backend python code.
     The frontend_engineer should make a gradio app.
     The test_engineer should write unit tests for the backend module.
-    All engineers will be working in the same sandbox directory. There is no directory structure, all files are in the same directory.
-    Everything runs in a uv project with gradio installed.
+    All engineers work in the same isolated sandbox workspace. Python 3.13 and Gradio 6 are installed.
   expected_output: >
     A detailed design to achieve the requirements, identifying code structure, and assignments to the engineers.
   agent: engineering_lead
@@ -58,4 +57,5 @@ test_task:
   context:
     - code_task
     - design_task
+    - frontend_task
   output_file: sandbox/test_summary.md

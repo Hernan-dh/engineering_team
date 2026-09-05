@@ -3,15 +3,27 @@
 ## Local setup
 
 1. Install Python 3.10–3.13 and `uv`.
-2. Run `uv sync`.
-3. Copy `.env.example` to `.env` and set local credentials.
-4. Run `uv run crewai run`.
+2. Start Docker Desktop with Linux containers enabled.
+3. Run `uv sync`.
+4. Copy `.env.example` to `.env` and configure at least one of `GEMINI_API_KEY`, `GROQ_API_KEY`, or `OPENROUTER_API_KEY`.
+5. Run `uv run crewai run`.
+
+The first run builds `engineering-team-sandbox:local`, which contains Python 3.13 and Gradio 6. Subsequent runs reuse that image and start with a clean `sandbox/`. Generated programs run without network access and are limited to one CPU, 1 GB RAM, 128 processes, and five minutes.
+
+Runtime model order is defined in `src/engineering_team/model_config.py`. A provider failure advances to the next configured model for the current call. Tracing is disabled so generated code and requirements are not uploaded as CrewAI execution traces.
+Anonymous CrewAI telemetry and OpenTelemetry export are also disabled by the entry point. The pinned Gradio runtime keeps API documentation off the execution path, so a documentation-service outage cannot stop the crew.
 
 Generated files in `output/` and `sandbox*/` are local artifacts and are excluded from publication.
 
 ## Verification
 
 Run `./scripts/verify.sh`, or on Windows run `uv run python scripts/verify.py`.
+
+To rebuild the sandbox image after changing its Dockerfile:
+
+```powershell
+docker build --tag engineering-team-sandbox:local --file docker/sandbox.Dockerfile docker
+```
 
 Enable the repository-managed pre-commit hook once per clone with `uv run python scripts/install_hooks.py`. GitHub Actions runs the same verifier.
 
@@ -22,7 +34,7 @@ Enable the repository-managed pre-commit hook once per clone with `uv run python
 
 ## Publishing
 
-Preview a proposal with `uv run python scripts/publish.py --preview`. Interactive publication verifies the repository, proposes an English Conventional Commit title through Gemini with Groq fallback, and requires typing `PUBLISH` before staging, committing, and pushing.
+Preview a proposal with `uv run python scripts/publish.py --preview`. Running `python scripts/publish.py` is also supported: the publisher invokes verification through `uv` so tests always use the project's locked environment. Interactive publication verifies the repository, proposes an English Conventional Commit title through Gemini with Groq fallback, and requires typing `PUBLISH` before staging, committing, and pushing.
 
 Provide `--title` and `--description` to avoid external metadata generation. Commits and pushes always require explicit user authorization.
 
