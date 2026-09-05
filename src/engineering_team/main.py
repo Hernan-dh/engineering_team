@@ -16,6 +16,7 @@ from engineering_team.resume import (
     clear_failed_stage,
     first_incomplete_stage,
     has_previous_program,
+    load_failure_feedback,
     load_requirements,
     mark_failed_stage,
     save_requirements,
@@ -24,6 +25,7 @@ from engineering_team.validation import (
     GeneratedProgramValidationError,
     validate_generated_program,
 )
+from engineering_team.text_tool_recovery import recover_sandbox_write
 from .tools.sandbox_tools import reset_sandbox
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
@@ -37,7 +39,7 @@ if hasattr(sys.stdout, "reconfigure"):
 # Replace with inputs you want to test with, it will automatically
 # interpolate any tasks and agents information
 
-def _resumed_crew():
+def _resumed_crew(feedback: str = ""):
     active_crew = EngineeringTeam(llm=fallback_llm()).crew()
     start_index = first_incomplete_stage()
     if start_index == len(STAGE_NAMES):
@@ -46,6 +48,12 @@ def _resumed_crew():
     for task in active_tasks:
         task.context = [context for context in (task.context or []) if context in active_tasks]
     active_crew.tasks = active_tasks
+    if feedback:
+        active_tasks[0].description += (
+            "\n\nA deterministic acceptance check failed. Fix the implementation or "
+            "tests responsible for this exact diagnostic, then run the relevant "
+            "sandbox checks before finishing:\n\n" + feedback
+        )
     print(f"Resuming from stage: {STAGE_NAMES[start_index]}\n")
     return active_crew
 
@@ -60,7 +68,7 @@ def run():
     )
     if selection.resume:
         requirements = load_requirements()
-        active_crew = _resumed_crew()
+        active_crew = _resumed_crew(load_failure_feedback())
         if active_crew is None:
             print("The previous program has already completed every stage.")
             return
@@ -72,7 +80,10 @@ def run():
 
     while True:
         try:
-            active_crew.kickoff(inputs={'requirements': requirements})
+            result = active_crew.kickoff(inputs={'requirements': requirements})
+            recovered_file = recover_sandbox_write(result.raw)
+            if recovered_file:
+                print(f"Recovered agent sandbox write: {recovered_file}")
             print("\nRunning deterministic acceptance checks...")
             validate_generated_program()
             clear_failed_stage()
@@ -82,12 +93,12 @@ def run():
             raise
         except Exception as error:
             if isinstance(error, GeneratedProgramValidationError):
-                mark_failed_stage(error.stage_index)
+                mark_failed_stage(error.stage_index, feedback=str(error))
             print(f"\nError: {error}", file=sys.stderr)
             if not ask_to_resume():
                 raise Exception(f"An error occurred while running the crew: {error}") from error
             requirements = load_requirements()
-            active_crew = _resumed_crew()
+            active_crew = _resumed_crew(str(error))
             if active_crew is None:
                 print("Every stage was completed before the error occurred.")
                 return

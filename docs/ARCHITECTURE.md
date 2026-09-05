@@ -11,8 +11,9 @@
 - `src/engineering_team/crew.py`: CrewAI agent, task, and crew construction.
 - `src/engineering_team/main.py`: command-line entry points and kickoff inputs.
 - `src/engineering_team/program_options.py`: five curated program choices and custom-input selection.
-- `src/engineering_team/resume.py`: local requirement checkpoint and artifact-based incomplete-stage detection.
+- `src/engineering_team/resume.py`: local requirement and failure-diagnostic checkpoints with artifact-based incomplete-stage detection.
 - `src/engineering_team/validation.py`: deterministic Docker acceptance gate for Gradio construction and backend tests.
+- `src/engineering_team/text_tool_recovery.py`: strict compatibility adapter for sandbox writes serialized as text by free tool-calling models.
 - `src/engineering_team/model_config.py`: version-controlled provider and model fallback order.
 - `src/engineering_team/model_provider.py`: per-call Gemini, Groq, and OpenRouter failover shared by all agents.
 - `src/engineering_team/tools/sandbox_tools.py`: constrained workspace tools and Docker execution.
@@ -29,6 +30,7 @@
 - Generated code executes without network access in an ephemeral container with a read-only root filesystem, dropped capabilities, and bounded CPU, memory, process count, and execution time. Only `sandbox/` is mounted read-write.
 - Resume state contains requirements only, remains inside ignored `sandbox/`, and is never published.
 - LLM task completion is advisory: the entry point only reports success after the generated validation script and unittest discovery both exit successfully in Docker.
+- Textual tool-call recovery accepts only a complete `write_sandbox_file` envelope and re-applies the same sandbox path-containment boundary; arbitrary functions and paths are rejected.
 
 ## Model routing
 

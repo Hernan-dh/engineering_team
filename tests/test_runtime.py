@@ -10,6 +10,7 @@ from engineering_team.program_options import PROGRAM_OPTIONS, choose_requirement
 from engineering_team.resume import (
     ask_to_resume,
     first_incomplete_stage,
+    load_failure_feedback,
     load_requirements,
     save_requirements,
     mark_failed_stage,
@@ -20,6 +21,7 @@ from engineering_team.tools.sandbox_tools import (
     write_sandbox_file,
 )
 from engineering_team.validation import GeneratedProgramValidationError, validate_generated_program
+from engineering_team.text_tool_recovery import recover_sandbox_write
 
 
 class ModelProviderTests(unittest.TestCase):
@@ -134,8 +136,9 @@ class ResumeTests(unittest.TestCase):
             (sandbox / "_validate.py").write_text("", encoding="utf-8")
             (sandbox / "frontend_summary.md").write_text("done", encoding="utf-8")
             (sandbox / "test_summary.md").write_text("done", encoding="utf-8")
-            mark_failed_stage(2, sandbox)
+            mark_failed_stage(2, sandbox, feedback="bad theme")
             self.assertEqual(first_incomplete_stage(sandbox), 2)
+            self.assertEqual(load_failure_feedback(sandbox), "bad theme")
 
     def test_legacy_sandbox_keeps_completed_backend_when_marked_failed(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -185,6 +188,35 @@ class AcceptanceValidationTests(unittest.TestCase):
             )
             summary = (sandbox / "test_summary.md").read_text(encoding="utf-8")
             self.assertIn("Backend unittest suite: passed", summary)
+
+
+class TextToolRecoveryTests(unittest.TestCase):
+    def test_applies_agent_serialized_sandbox_write(self):
+        call = """<tool_call>
+<function=write_sandbox_file>
+<parameter=filename>
+backend/api.py
+</parameter>
+<parameter=content>
+print("fixed by agent")
+</parameter>
+</function>
+</tool_call>"""
+        with tempfile.TemporaryDirectory() as directory:
+            sandbox = Path(directory)
+            recovered = recover_sandbox_write(call, sandbox)
+            self.assertEqual(recovered, "backend/api.py")
+            self.assertEqual(
+                (sandbox / "backend" / "api.py").read_text(encoding="utf-8"),
+                'print("fixed by agent")\n',
+            )
+
+    def test_rejects_paths_outside_sandbox(self):
+        call = """<tool_call><function=write_sandbox_file>
+<parameter=filename>../escape.py</parameter>
+<parameter=content>bad</parameter></function></tool_call>"""
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertIsNone(recover_sandbox_write(call, Path(directory)))
 
 
 if __name__ == "__main__":

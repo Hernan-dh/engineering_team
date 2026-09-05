@@ -21,11 +21,26 @@ def save_requirements(requirements: str, sandbox: Path = SANDBOX_DIR) -> None:
     (sandbox / STATE_FILE).write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
 
 
-def mark_failed_stage(stage_index: int, sandbox: Path = SANDBOX_DIR) -> None:
+def mark_failed_stage(
+    stage_index: int,
+    sandbox: Path = SANDBOX_DIR,
+    feedback: str = "",
+) -> None:
     state_path = sandbox / STATE_FILE
     state = json.loads(state_path.read_text(encoding="utf-8")) if state_path.is_file() else {}
     state["resume_stage"] = stage_index
+    if feedback:
+        state["failure_feedback"] = feedback[-6000:]
     state_path.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+
+
+def load_failure_feedback(sandbox: Path = SANDBOX_DIR) -> str:
+    state_path = sandbox / STATE_FILE
+    if not state_path.is_file():
+        return ""
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    feedback = state.get("failure_feedback", "")
+    return feedback if isinstance(feedback, str) else ""
 
 
 def clear_failed_stage(sandbox: Path = SANDBOX_DIR) -> None:
@@ -34,6 +49,7 @@ def clear_failed_stage(sandbox: Path = SANDBOX_DIR) -> None:
         return
     state = json.loads(state_path.read_text(encoding="utf-8"))
     state.pop("resume_stage", None)
+    state.pop("failure_feedback", None)
     state_path.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
 
 
