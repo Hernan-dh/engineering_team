@@ -7,6 +7,12 @@ from unittest.mock import patch
 from engineering_team.model_config import MODEL_FALLBACKS
 from engineering_team.model_provider import fallback_llm, is_empty_response, openai_compatible_messages
 from engineering_team.program_options import PROGRAM_OPTIONS, choose_requirements
+from engineering_team.resume import (
+    ask_to_resume,
+    first_incomplete_stage,
+    load_requirements,
+    save_requirements,
+)
 from engineering_team.tools.sandbox_tools import run_sandbox_python, write_sandbox_file
 
 
@@ -73,12 +79,53 @@ class ProgramSelectionTests(unittest.TestCase):
     def test_selects_a_preset(self):
         answers = iter(["3"])
         selected = choose_requirements(lambda _prompt: next(answers), lambda _text: None)
-        self.assertEqual(selected, PROGRAM_OPTIONS[2][1])
+        self.assertEqual(selected.requirements, PROGRAM_OPTIONS[2][1])
 
     def test_option_zero_accepts_custom_requirements(self):
-        answers = iter(["0", "Crear un editor de recetas"])
+        answers = iter(["0", "Build a recipe editor"])
         selected = choose_requirements(lambda _prompt: next(answers), lambda _text: None)
-        self.assertEqual(selected, "Crear un editor de recetas")
+        self.assertEqual(selected.requirements, "Build a recipe editor")
+
+    def test_continue_option_is_only_available_with_previous_work(self):
+        answers = iter(["6"])
+        selected = choose_requirements(
+            lambda _prompt: next(answers), lambda _text: None, can_resume=True
+        )
+        self.assertTrue(selected.resume)
+
+
+class ResumeTests(unittest.TestCase):
+    def test_detects_first_incomplete_stage(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sandbox = Path(directory)
+            self.assertEqual(first_incomplete_stage(sandbox), 0)
+            (sandbox / "design.md").write_text("design", encoding="utf-8")
+            self.assertEqual(first_incomplete_stage(sandbox), 1)
+            (sandbox / "backend").mkdir()
+            (sandbox / "backend" / "api.py").write_text("", encoding="utf-8")
+            self.assertEqual(first_incomplete_stage(sandbox), 2)
+            (sandbox / "frontend").mkdir()
+            (sandbox / "frontend" / "app.py").write_text("", encoding="utf-8")
+            (sandbox / "_validate.py").write_text("", encoding="utf-8")
+            self.assertEqual(first_incomplete_stage(sandbox), 3)
+            (sandbox / "test_summary.md").write_text("done", encoding="utf-8")
+            self.assertEqual(first_incomplete_stage(sandbox), 4)
+
+    def test_round_trips_requirements(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sandbox = Path(directory)
+            save_requirements("Build a scheduler", sandbox)
+            self.assertEqual(load_requirements(sandbox), "Build a scheduler")
+
+    def test_offers_immediate_resume_after_error(self):
+        answers = iter(["maybe", "y"])
+        messages = []
+        accepted = ask_to_resume(lambda _prompt: next(answers), messages.append)
+        self.assertTrue(accepted)
+        self.assertTrue(any("work has been saved" in message for message in messages))
+
+    def test_declining_resume_returns_false(self):
+        self.assertFalse(ask_to_resume(lambda _prompt: "n", lambda _text: None))
 
 
 if __name__ == "__main__":

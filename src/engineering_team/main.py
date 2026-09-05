@@ -9,7 +9,15 @@ os.environ.setdefault("OTEL_SDK_DISABLED", "true")
 
 from engineering_team.crew import EngineeringTeam
 from engineering_team.model_provider import fallback_llm
-from engineering_team.program_options import choose_requirements
+from engineering_team.program_options import ProgramSelection, choose_requirements
+from engineering_team.resume import (
+    STAGE_NAMES,
+    ask_to_resume,
+    first_incomplete_stage,
+    has_previous_program,
+    load_requirements,
+    save_requirements,
+)
 from .tools.sandbox_tools import reset_sandbox
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
@@ -23,17 +31,54 @@ if hasattr(sys.stdout, "reconfigure"):
 # Replace with inputs you want to test with, it will automatically
 # interpolate any tasks and agents information
 
+def _resumed_crew():
+    active_crew = EngineeringTeam(llm=fallback_llm()).crew()
+    start_index = first_incomplete_stage()
+    if start_index == len(STAGE_NAMES):
+        return None
+    active_tasks = active_crew.tasks[start_index:]
+    for task in active_tasks:
+        task.context = [context for context in (task.context or []) if context in active_tasks]
+    active_crew.tasks = active_tasks
+    print(f"Resuming from stage: {STAGE_NAMES[start_index]}\n")
+    return active_crew
+
+
 def run():
-    """
-    Run the crew.
-    """
-    try:
-        requirements = os.getenv("ENGINEERING_REQUIREMENTS", "").strip() or choose_requirements()
-        inputs = {'requirements': requirements}
+    """Run the crew and offer an in-process resume after failures."""
+    configured = os.getenv("ENGINEERING_REQUIREMENTS", "").strip()
+    selection = (
+        ProgramSelection(requirements=configured)
+        if configured
+        else choose_requirements(can_resume=has_previous_program())
+    )
+    if selection.resume:
+        requirements = load_requirements()
+        active_crew = _resumed_crew()
+        if active_crew is None:
+            print("The previous program has already completed every stage.")
+            return
+    else:
+        requirements = selection.requirements
         reset_sandbox()
-        EngineeringTeam(llm=fallback_llm()).crew().kickoff(inputs=inputs)
-    except Exception as e:
-        raise Exception(f"An error occurred while running the crew: {e}")
+        save_requirements(requirements)
+        active_crew = EngineeringTeam(llm=fallback_llm()).crew()
+
+    while True:
+        try:
+            active_crew.kickoff(inputs={'requirements': requirements})
+            return
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception as error:
+            print(f"\nError: {error}", file=sys.stderr)
+            if not ask_to_resume():
+                raise Exception(f"An error occurred while running the crew: {error}") from error
+            requirements = load_requirements()
+            active_crew = _resumed_crew()
+            if active_crew is None:
+                print("Every stage was completed before the error occurred.")
+                return
 
 
 def train():

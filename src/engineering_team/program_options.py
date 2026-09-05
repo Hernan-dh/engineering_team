@@ -3,27 +3,34 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class ProgramSelection:
+    requirements: str = ""
+    resume: bool = False
 
 
 PROGRAM_OPTIONS = (
     (
-        "Simulador de inversiones",
+        "Investment simulator",
         """Build an account management system for a trading simulation platform. Users can create an account, deposit and withdraw funds, buy and sell shares, inspect holdings and transactions, and calculate portfolio value and profit or loss. Prevent overdrafts, unaffordable purchases, and sales of shares the user does not own. Include fixed test prices for AAPL, TSLA, and GOOGL.""",
     ),
     (
-        "Gestor de gastos personales",
+        "Personal expense manager",
         """Build a personal expense manager. Users can record income and expenses with categories and dates, edit or delete entries, set monthly category budgets, filter transactions, and view balance and monthly summaries. Persist data locally and provide useful validation and unit tests.""",
     ),
     (
-        "Sistema de inventario y ventas",
+        "Inventory and sales system",
         """Build an inventory and sales manager for a small business. Users can create products, adjust stock, register sales, prevent sales without sufficient inventory, search products, and view low-stock and revenue reports. Persist data locally and include comprehensive unit tests.""",
     ),
     (
-        "Agenda de turnos",
+        "Appointment scheduler",
         """Build an appointment scheduling system. Users can manage clients and services, create, reschedule, cancel, and list appointments, prevent overlapping bookings, and filter the calendar by date or status. Persist data locally and include comprehensive unit tests.""",
     ),
     (
-        "Tablero de tareas Kanban",
+        "Kanban task board",
         """Build a personal Kanban task manager. Users can create projects and tasks, assign priorities and due dates, move tasks between pending, in-progress, and completed states, search and filter tasks, and view progress summaries. Persist data locally and include comprehensive unit tests.""",
     ),
 )
@@ -32,23 +39,29 @@ PROGRAM_OPTIONS = (
 def choose_requirements(
     input_fn: Callable[[str], str] = input,
     output_fn: Callable[[str], None] = print,
-) -> str:
+    can_resume: bool = False,
+) -> ProgramSelection:
     """Ask the user to select a preset or enter custom requirements."""
-    output_fn("\n¿Qué programa querés que genere el equipo?\n")
-    output_fn("0. Escribir requisitos personalizados")
+    output_fn("\nWhat program would you like the team to generate?\n")
+    output_fn("0. Enter custom requirements")
     for number, (name, _) in enumerate(PROGRAM_OPTIONS, start=1):
         output_fn(f"{number}. {name}")
+    if can_resume:
+        output_fn("6. Continue the previous program")
 
     while True:
-        selection = input_fn("\nElegí una opción (0-5): ").strip()
+        maximum = 6 if can_resume else 5
+        selection = input_fn(f"\nChoose an option (0-{maximum}): ").strip()
+        if selection == "6" and can_resume:
+            return ProgramSelection(resume=True)
         if selection == "0":
-            custom = input_fn("Describí el programa que querés generar: ").strip()
+            custom = input_fn("Describe the program you want to generate: ").strip()
             if custom:
-                return custom
-            output_fn("La descripción no puede estar vacía.")
+                return ProgramSelection(requirements=custom)
+            output_fn("The description cannot be empty.")
             continue
         if selection.isdigit() and 1 <= int(selection) <= len(PROGRAM_OPTIONS):
             name, requirements = PROGRAM_OPTIONS[int(selection) - 1]
-            output_fn(f"Seleccionado: {name}\n")
-            return requirements
-        output_fn("Opción inválida. Ingresá un número entre 0 y 5.")
+            output_fn(f"Selected: {name}\n")
+            return ProgramSelection(requirements=requirements)
+        output_fn(f"Invalid option. Enter a number between 0 and {maximum}.")

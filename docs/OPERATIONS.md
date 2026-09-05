@@ -8,7 +8,7 @@
 4. Copy `.env.example` to `.env` and configure at least one of `GEMINI_API_KEY`, `GROQ_API_KEY`, or `OPENROUTER_API_KEY`.
 5. Run `uv run crewai run`.
 
-The command displays five program presets. Select `0` to enter custom requirements. Automated or hosted callers can set `ENGINEERING_REQUIREMENTS` and the menu will be skipped.
+The command displays five program presets. Select `0` to enter custom requirements. If the prior sandbox contains work, select `6` to preserve it and continue from the first incomplete stage. After an error, the still-running command also offers an immediate `[y/N]` resume prompt. Automated or hosted callers can set `ENGINEERING_REQUIREMENTS` to start a new program and skip the initial menu; without interactive stdin, a failed run exits after preserving its checkpoint.
 
 The first run builds `engineering-team-sandbox:local`, which contains Python 3.13 and Gradio 6. Subsequent runs reuse that image and start with a clean `sandbox/`. Generated programs run without network access and are limited to one CPU, 1 GB RAM, 128 processes, and five minutes.
 
@@ -42,6 +42,7 @@ Provide `--title` and `--description` to avoid external metadata generation. Com
 
 ## Recovery
 
+- After a provider, quota, or connection failure, answer `y` at the immediate resume prompt. The process remains open and starts again at the first incomplete design, backend, frontend, or test task. If you exit, rerun `uv run crewai run` later and select option `6`.
 - If verification fails, fix every reported item and rerun it.
 - If metadata generation fails, inspect the provider attempt names, verify local keys and quotas, or provide commit metadata manually.
 - Never recover with a force-push.
