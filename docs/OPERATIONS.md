@@ -17,6 +17,9 @@ After CrewAI completes, the entry point independently runs `_validate.py` and un
 Some free models serialize a requested sandbox write in their final text instead of returning a native tool call. The entry point recovers that narrow case before acceptance validation. Only a full `write_sandbox_file` envelope with a contained relative path is accepted; all other textual calls are ignored.
 
 Runtime model order is defined in `src/engineering_team/model_config.py`. A provider failure advances to the next configured model for the current call. Tracing is disabled so generated code and requirements are not uploaded as CrewAI execution traces.
+`SERPER_API_KEY` is optional. The engineering lead uses Serper for current
+technical documentation when configured, and DDGS otherwise. Other engineers
+receive the lead's design context and do not search independently.
 Anonymous CrewAI telemetry and OpenTelemetry export are also disabled by the entry point. The pinned Gradio runtime keeps API documentation off the execution path, so a documentation-service outage cannot stop the crew.
 
 Generated files in `output/` and `sandbox*/` are local artifacts and are excluded from publication.

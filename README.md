@@ -16,7 +16,7 @@ uv sync
 
 Copy `.env.example` to `.env` (`Copy-Item .env.example .env` in PowerShell, or `cp .env.example .env` on Linux/macOS), then replace only the placeholders for the providers you intend to use. Leave unused credentials empty. Never commit the real `.env`.
 
-Configure at least one model-provider key and start Docker. The first run builds `docker/sandbox.Dockerfile` and needs network access to install its dependencies. Select a preset or supply custom requirements; `ENGINEERING_REQUIREMENTS` supports non-interactive input.
+Configure at least one model-provider key and start Docker. `SERPER_API_KEY` is optional for current technical research; DDGS is used when it is empty. The first run builds `docker/sandbox.Dockerfile` and needs network access to install its dependencies. Select a preset or supply custom requirements; `ENGINEERING_REQUIREMENTS` supports non-interactive input.
 
 ```sh
 uv run crewai run
@@ -25,7 +25,7 @@ uv run crewai run
 ## Architecture
 
 ```text
-CLI requirements -> engineering lead -> backend engineer -> frontend engineer -> test engineer -> Docker acceptance gate
+CLI requirements -> engineering lead with optional web research -> backend engineer -> frontend engineer -> test engineer -> Docker acceptance gate
 ```
 
 See [architecture](docs/ARCHITECTURE.md) for components, data flow and trust boundaries, and [operations](docs/OPERATIONS.md) for configuration and recovery.
