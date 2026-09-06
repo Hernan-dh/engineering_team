@@ -50,3 +50,19 @@ Provide `--title` and `--description` to avoid external metadata generation. Com
 - If verification fails, fix every reported item and rerun it.
 - If metadata generation fails, inspect the provider attempt names, verify local keys and quotas, or provide commit metadata manually.
 - Never recover with a force-push.
+
+## Public-source verification
+
+See [README](../README.md) for the reproducible setup. CI installs dependencies before invoking the verifier. Tests disable dotenv loading and provider telemetry and use synthetic inputs or mocked external calls; passing unit tests does not certify live services or production security.
+
+The verifier invokes tests through uv in this repository so imports resolve even when verification is started from global Python. uv must be on PATH; use uv sync --locked for the committed dependency resolution.
+
+
+## Publication review
+
+Before publishing, run the verifier and review git diff and git status --short,
+especially new files. Keep real credentials in local environment files or hosting
+secrets, and preserve upstream license notices. Automated secret checks cover
+recognizable patterns in current source files; they do not certify the absence of
+secrets or scan every historical commit, remote ref, hosting log or fork. Removing
+a file from the working tree does not remove it from Git history.

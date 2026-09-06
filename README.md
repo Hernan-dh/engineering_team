@@ -1,56 +1,58 @@
-# EngineeringTeam Crew
+# Engineering Team
 
-Welcome to the EngineeringTeam Crew project, powered by [crewAI](https://crewai.com). This template is designed to help you set up a multi-agent AI system with ease, leveraging the powerful and flexible framework provided by crewAI. Our goal is to enable your agents to collaborate effectively on complex tasks, maximizing their collective intelligence and capabilities.
+A command-line team that designs and generates a Python application with a Gradio interface, validates it in Docker, and resumes from incomplete stages.
 
-## Installation
+## Attribution
 
-Ensure you have Python >=3.10 <3.14 installed on your system. This project uses [UV](https://docs.astral.sh/uv/) for dependency management and package handling, offering a seamless setup and execution experience.
+Project built from [Ed Donner's agentic AI engineering course](https://github.com/ed-donner/agents). The upstream MIT copyright notice is preserved in [LICENSE](LICENSE). No endorsement by the course author is implied.
 
-First, if you haven't already, install uv:
+## Run locally
 
-```bash
-pip install uv
+Python 3.12 and uv are the documented development baseline. Docker is required for actual code generation, but not for unit tests. Run the following commands from this repository's root.
+
+```sh
+uv sync
 ```
 
-Next, navigate to your project directory and install the dependencies:
+Copy `.env.example` to `.env` (`Copy-Item .env.example .env` in PowerShell, or `cp .env.example .env` on Linux/macOS), then replace only the placeholders for the providers you intend to use. Leave unused credentials empty. Never commit the real `.env`.
 
-(Optional) Lock the dependencies and install them by using the CLI command:
-```bash
-crewai install
-```
-### Customizing
+Configure at least one model-provider key and start Docker. The first run builds `docker/sandbox.Dockerfile` and needs network access to install its dependencies. Select a preset or supply custom requirements; `ENGINEERING_REQUIREMENTS` supports non-interactive input.
 
-Configure one or more of `GEMINI_API_KEY`, `GROQ_API_KEY`, and `OPENROUTER_API_KEY` in `.env`. The crew uses the same per-call provider fallback pattern as the sibling CrewAI projects.
-
-- Modify `src/engineering_team/config/agents.yaml` to define your agents
-- Modify `src/engineering_team/config/tasks.yaml` to define your tasks
-- Modify `src/engineering_team/crew.py` to add your own logic, tools and specific args
-- Modify `src/engineering_team/main.py` to add custom inputs for your agents and tasks
-
-## Running the Project
-
-To kickstart your crew of AI agents and begin task execution, run this from the root folder of your project:
-
-```bash
+```sh
 uv run crewai run
 ```
 
-This command initializes the engineering team and builds its isolated Python 3.13/Gradio 6 Docker image on first use. The lead designs the solution, backend and frontend engineers implement it, and the test engineer validates and repairs the backend in the shared sandbox workspace.
+## Architecture
 
-At startup, the CLI offers five example programs plus option `0` for custom requirements. When an interrupted program exists, option `6` continues from the first incomplete stage without deleting its sandbox. If a running crew fails, the same process immediately asks whether to resume and rebuilds only the pending tasks when accepted. For non-interactive execution, set `ENGINEERING_REQUIREMENTS` to start a new program and bypass the initial menu.
+```text
+CLI requirements -> engineering lead -> backend engineer -> frontend engineer -> test engineer -> Docker acceptance gate
+```
 
-Docker Desktop must be running. Generated files remain under `sandbox/` and are not committed.
+See [architecture](docs/ARCHITECTURE.md) for components, data flow and trust boundaries, and [operations](docs/OPERATIONS.md) for configuration and recovery.
 
-## Understanding Your Crew
+## Technologies
 
-The engineering_team Crew is composed of multiple AI agents, each with unique roles, goals, and tools. These agents collaborate on a series of tasks, defined in `config/tasks.yaml`, leveraging their collective skills to achieve complex objectives. The `config/agents.yaml` file outlines the capabilities and configurations of each agent in your crew.
+Python, CrewAI, Gradio 6, Docker, YAML, uv and unittest; Gemini, Groq and OpenRouter providers.
 
-## Support
+## Reproducible tests
 
-For support, questions, or feedback regarding the EngineeringTeam Crew or crewAI.
-- Visit our [documentation](https://docs.crewai.com)
-- Reach out to us through our [GitHub repository](https://github.com/joaomdmoura/crewai)
-- [Join our Discord](https://discord.com/invite/X4JWnZnxPb)
-- [Chat with our docs](https://chatg.pt/DWjSBZn)
+After installing the dependencies above:
 
-Let's create wonders together with the power and simplicity of crewAI.
+```sh
+uv run python -m unittest discover -v
+uv run python scripts/verify.py
+```
+
+Coverage: Sandbox containment and container constraints, provider configuration, resume-stage detection, strict tool-call recovery and acceptance-gate failures; no live model or Docker dependency in unit tests. Tests run without real credentials or paid API calls. They do not measure model quality, live provider availability, or full browser behavior. CI installs dependencies and runs the same verifier on pushes and pull requests.
+
+## Limitations
+
+Generated code requires review. Acceptance checks verify construction and backend tests, not visual quality or all requirements. The runtime container has no network and only its preinstalled dependencies. Resuming relies on local artifacts. This is an experimental developer tool, not an autonomous production deployment service.
+
+Prompts and relevant context are sent to external model/search providers. Do not submit secrets or confidential data. Provider names in source code are configuration, not promises of current availability, pricing, or free access.
+
+## Public repository and license
+
+The repository includes a placeholder-only [.env.example](.env.example); local credentials, caches and generated artifacts are excluded by [.gitignore](.gitignore). See [operations](docs/OPERATIONS.md) for verification and publication instructions.
+
+The code is distributed under the [MIT license](LICENSE). Dependencies retain their own licenses. Biographical material, third-party documents, logos and linked content are not relicensed by this code license. Publishing scripts can send code diffs to external models when generating commit text; use explicit metadata to avoid that step.
