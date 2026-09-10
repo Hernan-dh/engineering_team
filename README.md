@@ -2,10 +2,6 @@
 
 A command-line team that designs and generates a Python application with a Gradio interface, validates it in Docker, and resumes from incomplete stages.
 
-## Attribution
-
-Project built from [Ed Donner's agentic AI engineering course](https://github.com/ed-donner/agents). The upstream MIT copyright notice is preserved in [LICENSE](LICENSE). No endorsement by the course author is implied.
-
 ## Run locally
 
 Python 3.12 and uv are the documented development baseline. Docker is required for actual code generation, but not for unit tests. Run the following commands from this repository's root.
